@@ -1,0 +1,10 @@
+streamlit
+openai>=1.12.0
+pandas
+python-dotenv
+pillow
+pypdfium2 
+opencv-python 
+numpy
+matplotlib
+pdfplumber
