@@ -273,37 +273,34 @@ revision_comparison_schema = {
 general_notes_schema = {
     "type": "object",
     "properties": {
-        "changed_notes": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "note_id": {
-                        "type": "string",
-                        "description": "Exact note number as shown, e.g. 3, 3a, 3c, 14(b)"
-                    },
-                    "change_type": {
-                        "type": "string",
-                        "enum": ["Modified", "Added", "Removed"]
-                    },
-                    "change_summary": {
-                        "type": "string",
-                        "description": "Explicit description of what changed in this specific note"
-                    }
-                },
-                "required": [
-                    "note_id",
-                    "change_type",
-                    "change_summary"
-                ]
-            }
+        "overall_comparison": {
+            "type": "string",
+            "description": "Explicit narrative comparison of General Notes"
         },
-        "overall_risk_comment": {
-            "type": "string"
+        "key_additions": {
+            "type": "string",
+            "description": "Explicitly described new requirements or clarifications"
+        },
+        "key_removals": {
+            "type": "string",
+            "description": "Explicitly described removed or relaxed requirements"
+        },
+        "key_modifications": {
+            "type": "string",
+            "description": "Explicit changes to existing requirements"
+        },
+        "engineering_risk": {
+            "type": "string",
+            "description": "Concise engineering or contractual risk statement"
         }
     },
-    "required": ["changed_notes", "overall_risk_comment"]
+    "required": [
+        "overall_comparison",
+        "engineering_risk"
+    ]
 }
+
+
 
 def segment_drawing(image):
     img = np.array(image)
@@ -592,18 +589,21 @@ def extract_data_general(gn_img_A_b64,gn_img_B_b64):
                     "text": """
                     Compare the GENERAL NOTES sections of the two drawings.
 
-                    CRITICAL INSTRUCTIONS:
-                    - Preserve the ORIGINAL note numbering EXACTLY as written
-                    - Treat sub-notes as independent notes (e.g. 3a, 3b, 3c)
-                    - DO NOT renumber notes sequentially
-                    - If a change occurs in a sub-note, reference the sub-note ID (e.g. Note 3c)
-                    - Report ONLY notes that changed
+                Write an explicit but concise comparison in paragraph form.
 
-                    For each changed note:
-                    - State whether it was Added, Removed, or Modified
-                    - Briefly explain what changed (1–3 sentences)
+                Requirements:
+                - Clearly state what technical requirements changed
+                - Explicitly mention changes to:
+                • ASME code references
+                • NDE requirements
+                • PWHT and heat treatment
+                • Hydrotest and pressure limits
+                • Materials, corrosion, coating, or fabrication rules
+                - Avoid listing every note number
+                - Focus on substance, not formatting
 
-                    Do not use tables.
+                The output should read like an engineer’s review comment.
+
                     """
                 },
                 {
@@ -745,11 +745,23 @@ def extract_plate_dims(desc):
     if not isinstance(desc, str):
         return None, None, None
 
-    pattern = r"PLATE\s+(\d+)\s*Thk\.\s*x\s*(\d+)\s*W\s*x\s*(\d+)\s*LG"
-    match = re.search(pattern, desc)
+    pattern = (
+        r"PLATE\s+"
+        r"(\d+)\s*THK\.?\s*"      # Thickness (Thk / THK / THK.)
+        r"x\s*"
+        r"(\d+)\s*W\s*"           # Width
+        r"x\s*~?"                 # Optional ~ before length
+        r"(\d+)\s*LG\.?"          # Length (LG or LG.)
+    )
+
+    match = re.search(pattern, desc, re.IGNORECASE)
 
     if match:
-        return int(match.group(1)), int(match.group(2)), int(match.group(3))
+        return (
+            int(match.group(1)),
+            int(match.group(2)),
+            int(match.group(3))
+        )
 
     return None, None, None
 
@@ -919,13 +931,21 @@ if old_pdf and new_pdf:
 
     with tab_general:
         st.subheader("General Notes Comparison")
-        for note in result3["changed_notes"]:
-            st.markdown(
-                f"**Note {note['note_id']} – {note['change_type']}**\n\n"
-                f"{note['change_summary']}"
-            )
-        st.subheader("⚠️ Overall Risk Comment")
-        st.warning(result3["overall_risk_comment"])
+
+        if result3.get("key_additions"):
+            st.markdown("**Key Additions / Clarifications**")
+            st.write(result3["key_additions"])
+
+        if result3.get("key_removals"):
+            st.markdown("**Key Removals / Relaxations**")
+            st.write(result3["key_removals"])
+
+        if result3.get("key_modifications"):
+            st.markdown("**Key Modifications**")
+            st.write(result3["key_modifications"])
+
+        st.subheader("⚠️ Engineering Risk")
+        st.warning(result3["engineering_risk"])
 
     with tab_revision:
         st.subheader("Revision History Comparison")
