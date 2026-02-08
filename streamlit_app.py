@@ -771,7 +771,7 @@ st.set_page_config(page_title="Design Data Comparator", layout="wide")
 col1_h, col2_h, col3_h = st.columns([1, 5, 1])
 
 with col1_h:
-    # st.image("sinsina_logo.jpg", width=120)
+    st.write('JFF')
 
 with col2_h:
     st.markdown(
